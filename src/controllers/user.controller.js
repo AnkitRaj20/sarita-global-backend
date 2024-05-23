@@ -116,8 +116,28 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
+//* LOGOUT CONTROLLER
+const logoutUser = asyncHandler(async(req, res) => {
+  await User.findByIdAndUpdate(
+      req.user._id,
+      {
+          new: true
+      }
+  )
+
+  const options = {
+      httpOnly: true,
+      secure: true
+  }
+
+  return res
+  .status(200)
+  .clearCookie("accessToken", options)
+  .json(new ApiResponse(200, {}, "User logged Out"))
+})
+
 //* UPDATE PROFILE CONTROLLER
-const updateAccountDetails = asyncHandler(async (req, res) => {
+const updateProfileDetails = asyncHandler(async (req, res) => {
   const { name, email } = req.body;
 
   if (!email && !name) {
@@ -141,35 +161,66 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 });
 
 //* UPDATE PROFILE PICTURE CONTROLLER
-const updateProfilePictureFile = asyncHandler(async (req, res) => {
-  const profilePictureLocalPath = req.file?.path;
+// const updateProfilePictureFile = asyncHandler(async (req, res) => {
+//   const profilePictureLocalPath = req.file?.path;
+
+//   if (!profilePictureLocalPath) {
+//     throw new ApiError(400, "Profile Picture file is required");
+//   }
+
+//   const profilePicture = await uploadOnCloudinary(profilePictureLocalPath);
+
+//   if (!profilePicture.url) {
+//     throw new ApiError(400, "Failed while uploading profile picture file");
+//   }
+
+//   const user = await User.findByIdAndUpdate(
+//     req.user._id,
+//     {
+//       $set: {
+//         profilePicture: profilePicture.url,
+//       },
+//     },
+//     { new: true }
+//   ).select("-password");
+
+//   fs.unlinkSync(profilePictureLocalPath);
+
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, user, "Profile Picture updated successfully"));
+// });
+
+const updateProfilePictureFile = asyncHandler(async(req, res) => {
+  const profilePictureLocalPath = req.file?.path
 
   if (!profilePictureLocalPath) {
-    throw new ApiError(400, "Profile Picture file is required");
+      throw new ApiError(400, "Profile Picture file is missing")
   }
 
-  const profilePicture = await uploadOnCloudinary(profilePictureLocalPath);
+  const profilePicture = await uploadOnCloudinary(profilePictureLocalPath)
 
   if (!profilePicture.url) {
-    throw new ApiError(400, "Failed while uploading profile picture file");
+      throw new ApiError(400, "Error while uploading on profilePicture")
+      
   }
 
   const user = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $set: {
-        profilePicture: profilePicture.url,
+      req.user?._id,
+      {
+          $set:{
+              profilePicture: profilePicture.url
+          }
       },
-    },
-    { new: true }
-  ).select("-password");
-
-  fs.unlinkSync(profilePictureLocalPath);
+      {new: true}
+  ).select("-password")
 
   return res
-    .status(200)
-    .json(new ApiResponse(200, user, "Profile Picture updated successfully"));
-});
+  .status(200)
+  .json(
+      new ApiResponse(200, user, "profilePicture image updated successfully")
+  )
+})
 
 
-export { registerUser, loginUser, updateAccountDetails, updateProfilePictureFile };
+export { registerUser, loginUser,logoutUser, updateProfileDetails, updateProfilePictureFile };
