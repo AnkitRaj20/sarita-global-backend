@@ -23,13 +23,12 @@ const userSchema = new Schema(
         required: [true, "Please enter a password"],
       },
     profilePicture: {
-        type: String, //cloudnary url
+        type: String, //cloudinary url
         required: true,
     },
   },
   { timestamps: true }
 );
-
 
 // Runs before saving the user to the database
 // pre is a hook
@@ -59,4 +58,4 @@ userSchema.methods.generateAccessToken = async function(){
   )
 }
 
-export const User = mongoose.model("User", userSchema);
+export const User =  mongoose.model("User", userSchema);

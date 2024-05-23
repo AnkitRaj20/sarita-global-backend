@@ -1,41 +1,36 @@
 import dotenv from "dotenv";
-import {v2 as cloudinary} from 'cloudinary';
-import fs from "fs"
+import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
 
 dotenv.config({
-    path: './.env'
-})
+  path: "./.env",
+});
 
-
-cloudinary.config({ 
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-  api_key: process.env.CLOUDINARY_API_KEY, 
-  api_secret: process.env.CLOUDINARY_API_SECRET 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 const uploadOnCloudinary = async (localFilePath) => {
-    try {
-        if(!localFilePath) return null;
+  try {
+    if (!localFilePath) return null;
 
-        // Upload the file to cloudinary
-        const response = await cloudinary.uploader.upload(localFilePath,{
-            resource_type: "auto",
-        });
+    // Upload the file to cloudinary
+    const response = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "auto",
+    });
 
-        // File has been uploaded successfully
-        console.log("File uploaded successfully.", response);
-        console.log("File url.", response.url);
-        fs.unlinkSync(localFilePath);
-        return response;
-    } catch (error) {
-        // Remove file from locally saved temporary file as the upload on server failed
-        fs.unlinkSync(localFilePath);
-        return null;
-    }
-}
+    // File has been uploaded successfully
+    fs.unlinkSync(localFilePath);
+    return response;
+  } catch (error) {
+    // Remove file from locally saved temporary file as the upload on server failed
+    fs.unlinkSync(localFilePath);
+    return null;
+  }
+};
 
-cloudinary.uploader.upload("https://upload.wikimedia.org/wikipedia/commons/a/ae/Olympic_flag.jpg",
-  { public_id: "olympic_flag" }, 
-  function(error, result) {console.log(result); });
 
-  export {uploadOnCloudinary};
+
+export { uploadOnCloudinary };

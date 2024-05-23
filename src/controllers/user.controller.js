@@ -1,9 +1,15 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { User } from "../models/user.model.js";
+import { User } from "../model/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import jwt from "jsonwebtoken.js";
+
+
+const generateAccessTokenFunction = async (userId) => {
+    const user = await User.findById(userId);
+    const accessToken = await user.generateAccessToken();
+    return { accessToken };
+  };
 
 const registerUser = asyncHandler(async (req, res) => {
   // get user details from frontend
@@ -57,12 +63,10 @@ const registerUser = asyncHandler(async (req, res) => {
     name,
     email,
     password,
-    profilePicture: profilePicture.url
+    profilePicture: profilePicture.url,
   });
 
-  const createdUser = await User.findById(user._id).select(
-    "-password"
-  );
+  const createdUser = await User.findById(user._id).select("-password");
 
   if (!createdUser) {
     throw new ApiError(500, "User registration failed");
@@ -71,7 +75,57 @@ const registerUser = asyncHandler(async (req, res) => {
   return res
     .status(201)
     .json(new ApiResponse(201, createdUser, "User registered successfully"));
-
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+    const {  email, password } = req.body;
+    if (!email) {
+      throw new ApiError(400, "Email is required");
+    }
+  
+    // finding the user based on username or email
+    const user = await User.findOne({ email });
+  
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+  
+    // isPasswordCorrect is a method on the user object created by me in the user model, Hence we are using it by user not User
+    const isPasswordCorrect = await user.isPasswordCorrect(password);
+  
+    if (!isPasswordCorrect) {
+      throw new ApiError(401, "Invalid User Credentials");
+    }
+  
+    const {  accessToken } = await generateAccessTokenFunction(user._id);
+  
+    const loggedInUser = await User.findById(user._id).select(
+      "-password"
+    );
+  
+    if (!loggedInUser) {
+      throw new ApiError(404, "User not found");
+    }
+  
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+  
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            user: loggedInUser,
+            accessToken,
+          },
+          "User logged In Successfully"
+        )
+      );
+  });
+  
+
+export { registerUser, loginUser };
