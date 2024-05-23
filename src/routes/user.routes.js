@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser, logoutUser, updateProfileDetails,updateProfilePictureFile } from "../controllers/user.controller.js";
+import { registerUser, loginUser, logoutUser, updateProfileDetails,updateProfilePictureFile,forgotPassword } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
 import {verifyJWT} from "../middlewares/auth.middleware.js"
@@ -18,6 +18,7 @@ router.route("/register").post(
 )
 
 router.route("/login").post(loginUser);
+router.route("/forgot-password").post(forgotPassword);
 
 // Secured routes
 // Run the verifyJWT middleware before running the route logoutUser handler

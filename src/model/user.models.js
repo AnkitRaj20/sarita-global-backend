@@ -26,6 +26,8 @@ const userSchema = new Schema(
         type: String, //cloudinary url
         required: true,
     },
+    forgotPasswordToken: String,
+    forgotPasswordTokenExpiry: Date,
   },
   { timestamps: true }
 );

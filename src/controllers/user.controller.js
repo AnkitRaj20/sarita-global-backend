@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../model/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import sendEmail from "../utils/mailer.js";
 
 const generateAccessTokenFunction = async (userId) => {
   const user = await User.findById(userId);
@@ -56,7 +57,9 @@ const registerUser = asyncHandler(async (req, res) => {
     profilePicture: profilePicture.url,
   });
 
-  const createdUser = await User.findById(user._id).select("-password");
+  const createdUser = await User.findById(user._id).select(
+    "-password  -forgotPasswordToken -forgotPasswordTokenExpiry"
+  );
 
   if (!createdUser) {
     throw new ApiError(500, "User registration failed");
@@ -90,7 +93,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const { accessToken } = await generateAccessTokenFunction(user._id);
 
-  const loggedInUser = await User.findById(user._id).select("-password");
+  const loggedInUser = await User.findById(user._id).select(
+    "-password  -forgotPasswordToken  -forgotPasswordTokenExpiry"
+  );
 
   if (!loggedInUser) {
     throw new ApiError(404, "User not found");
@@ -117,24 +122,21 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 //* LOGOUT CONTROLLER
-const logoutUser = asyncHandler(async(req, res) => {
-  await User.findByIdAndUpdate(
-      req.user._id,
-      {
-          new: true
-      }
-  )
+const logoutUser = asyncHandler(async (req, res) => {
+  await User.findByIdAndUpdate(req.user._id, {
+    new: true,
+  });
 
   const options = {
-      httpOnly: true,
-      secure: true
-  }
+    httpOnly: true,
+    secure: true,
+  };
 
   return res
-  .status(200)
-  .clearCookie("accessToken", options)
-  .json(new ApiResponse(200, {}, "User logged Out"))
-})
+    .status(200)
+    .clearCookie("accessToken", options)
+    .json(new ApiResponse(200, {}, "User logged Out"));
+});
 
 //* UPDATE PROFILE CONTROLLER
 const updateProfileDetails = asyncHandler(async (req, res) => {
@@ -153,7 +155,7 @@ const updateProfileDetails = asyncHandler(async (req, res) => {
       },
     },
     { new: true }
-  ).select("-password");
+  ).select("-password  -forgotPasswordToken  -forgotPasswordTokenExpiry");
 
   return res
     .status(200)
@@ -161,66 +163,70 @@ const updateProfileDetails = asyncHandler(async (req, res) => {
 });
 
 //* UPDATE PROFILE PICTURE CONTROLLER
-// const updateProfilePictureFile = asyncHandler(async (req, res) => {
-//   const profilePictureLocalPath = req.file?.path;
-
-//   if (!profilePictureLocalPath) {
-//     throw new ApiError(400, "Profile Picture file is required");
-//   }
-
-//   const profilePicture = await uploadOnCloudinary(profilePictureLocalPath);
-
-//   if (!profilePicture.url) {
-//     throw new ApiError(400, "Failed while uploading profile picture file");
-//   }
-
-//   const user = await User.findByIdAndUpdate(
-//     req.user._id,
-//     {
-//       $set: {
-//         profilePicture: profilePicture.url,
-//       },
-//     },
-//     { new: true }
-//   ).select("-password");
-
-//   fs.unlinkSync(profilePictureLocalPath);
-
-//   return res
-//     .status(200)
-//     .json(new ApiResponse(200, user, "Profile Picture updated successfully"));
-// });
-
-const updateProfilePictureFile = asyncHandler(async(req, res) => {
-  const profilePictureLocalPath = req.file?.path
+const updateProfilePictureFile = asyncHandler(async (req, res) => {
+  const profilePictureLocalPath = req.file?.path;
 
   if (!profilePictureLocalPath) {
-      throw new ApiError(400, "Profile Picture file is missing")
+    throw new ApiError(400, "Profile Picture file is missing");
   }
 
-  const profilePicture = await uploadOnCloudinary(profilePictureLocalPath)
+  const profilePicture = await uploadOnCloudinary(profilePictureLocalPath);
 
   if (!profilePicture.url) {
-      throw new ApiError(400, "Error while uploading on profilePicture")
-      
+    throw new ApiError(400, "Error while uploading on profilePicture");
   }
 
   const user = await User.findByIdAndUpdate(
-      req.user?._id,
-      {
-          $set:{
-              profilePicture: profilePicture.url
-          }
+    req.user?._id,
+    {
+      $set: {
+        profilePicture: profilePicture.url,
       },
-      {new: true}
-  ).select("-password")
+    },
+    { new: true }
+  ).select("-password  -forgotPasswordToken  -forgotPasswordTokenExpiry");
 
   return res
-  .status(200)
-  .json(
+    .status(200)
+    .json(
       new ApiResponse(200, user, "profilePicture image updated successfully")
-  )
-})
+    );
+});
 
+//* FORGOT PASSWORD CONTROLLER
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
 
-export { registerUser, loginUser,logoutUser, updateProfileDetails, updateProfilePictureFile };
+  if (!email) {
+    throw new ApiError(400, "Email is required");
+  }
+
+  const lowerEmail = email.toLowerCase();
+  // Checks if user exsits or not
+  const user = await User.findOne({ email: lowerEmail });
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Send verification email
+  await sendEmail({
+    email,
+    emailType: "RESET",
+    userId: user._id,
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, email, "Email sent successfully"));
+
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  updateProfileDetails,
+  updateProfilePictureFile,
+  forgotPassword
+};
